@@ -943,6 +943,39 @@ fn config_save_invalidates_global_config_cache() {
 }
 
 #[test]
+fn builtin_tiering_defaults_eager_and_roundtrips() {
+    use crate::config::BuiltinTieringMode;
+    for contents in ["", "[tools]\n", "[tools]\nbuiltin_tiering = \"eager\"\n"] {
+        let config: Config = toml::from_str(contents).unwrap();
+        assert_eq!(config.tools.builtin_tiering, BuiltinTieringMode::Eager);
+    }
+    let static_cfg: Config =
+        toml::from_str("[tools]\nbuiltin_tiering = \"static\"\n").unwrap();
+    assert_eq!(static_cfg.tools.builtin_tiering, BuiltinTieringMode::Static);
+    let encoded = toml::to_string(&static_cfg).unwrap();
+    let restored: Config = toml::from_str(&encoded).unwrap();
+    assert_eq!(restored.tools.builtin_tiering, BuiltinTieringMode::Static);
+    assert_eq!(BuiltinTieringMode::parse("static"), Some(BuiltinTieringMode::Static));
+    assert_eq!(BuiltinTieringMode::parse("eager"), Some(BuiltinTieringMode::Eager));
+    assert_eq!(BuiltinTieringMode::parse("bogus"), None);
+}
+
+#[test]
+fn builtin_tiering_env_override() {
+    let _guard = crate::storage::lock_test_env();
+    let prev = std::env::var_os("JCODE_BUILTIN_TIERING");
+    crate::env::set_var("JCODE_BUILTIN_TIERING", "static");
+    let mut cfg = Config::default();
+    cfg.apply_env_overrides();
+    assert_eq!(cfg.tools.builtin_tiering, crate::config::BuiltinTieringMode::Static);
+    crate::env::set_var("JCODE_BUILTIN_TIERING", "eager");
+    let mut cfg = Config::default();
+    cfg.apply_env_overrides();
+    assert_eq!(cfg.tools.builtin_tiering, crate::config::BuiltinTieringMode::Eager);
+    restore_env_var("JCODE_BUILTIN_TIERING", prev);
+}
+
+#[test]
 fn config_env_fingerprint_ignores_runtime_only_jcode_vars() {
     let _guard = crate::storage::lock_test_env();
     let prev_runtime_provider = std::env::var_os("JCODE_RUNTIME_PROVIDER");

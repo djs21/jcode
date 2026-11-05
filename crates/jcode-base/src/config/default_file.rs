@@ -954,6 +954,14 @@ mod tests {
         assert_eq!(config.tools.mcp_tools, McpToolsMode::Auto);
         assert_eq!(config.tools.mcp_tools_token_threshold, 8_000);
         assert_eq!(config.tools.auto_background_timeout_ms, 3_000);
+        assert_eq!(
+            config.tools.builtin_tiering,
+            crate::config::BuiltinTieringMode::Eager
+        );
+        assert_eq!(
+            config.compaction.strategy,
+            jcode_config_types::CompactionStrategy::Vcc
+        );
         assert_eq!(config.session.hibernation_idle_secs, 1800);
         assert!(
             config.display.show_thinking,
