@@ -983,9 +983,12 @@ impl Skill {
         .with_trust(crate::memory::TrustLevel::Medium)
         .with_timestamps(now, now);
         // Use the precomputed skill search text rather than the tag-derived one.
+        // For lazy skills the indexed body is the DOC.md content, mirroring
+        // get_prompt(), so retrieval still matches against the full doc.
+        let resolved = self.resolved_body();
         entry.search_text = self
             .search_text
-            .get_or_init(|| build_skill_search_text(&self.name, &self.description, &self.content))
+            .get_or_init(|| build_skill_search_text(&self.name, &self.description, &resolved))
             .clone();
         entry
     }
