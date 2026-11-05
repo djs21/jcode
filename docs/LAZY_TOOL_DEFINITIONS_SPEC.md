@@ -28,12 +28,12 @@ Target: prefix turun dari **18,279 token** (`system=5,871 tools=12,408` per `~/.
 
 | Tier | Tools | Estimasi token |
 |---|---|---|
-| Tier 1 (eager) | `read`, `write`, `edit`, `apply_patch`, `bash`, `todo`, `swarm`, `batch`, `bg`, `agentgrep` | ~3,000 |
-| Tier 2 (lazy) | `browser`, `calendar`, `gmail`, `memory`, `maintainer_feedback`, `compile_remote`, `panel`, `side_panel`, `applet`, `open`, `conversation_search`, `session_search`, `skill_manage`*, `schedule`, `codemode`, `jcode_docs`, `selfdev`, `webfetch`, `websearch`, `desktop_selfdev`, `debug_socket`, `integration_tools` | ~9,400 |
+| Tier 1 (eager) | `read`, `write`, `edit`, `apply_patch`, `bash`, `todo`, `swarm`, `batch`, `bg`, `agentgrep`, `skill_manage` | ~3,000 |
+| Tier 2 (lazy) | `browser`, `calendar`, `gmail`, `memory`, `maintainer_feedback`, `compile_remote`, `panel`, `side_panel`, `open`, `conversation_search`, `session_search`, `schedule`, `codemode`, `jcode_docs`, `selfdev`, `webfetch`, `websearch`, `desktop_selfdev`, `debug_socket`, `integration_tools` | ~9,400 |
 | Meta-tool `tools` (search/call) | 1 tool pengganti | ~300 |
 | **Total baru (prefix tool)** | | **~3,300 (vs 12,408)** |
 
-\* `skill_manage` tetap eager jika skill interaktif dipakai sering — lihat §5 open question.
+> Implementasi: `skill_manage` tetap Tier 1 sesuai resolusi §5 open question 1. `applet` tidak ada di registry saat ini dan tidak dimasukkan ke tier list.
 
 ## 3. Tujuan / Non-tujuan
 
@@ -127,9 +127,11 @@ Lazy tools available (load with tools action=search/call): browser, calendar, gm
 - Provider switch / `unlock_tools()` me-rebuild snapshot — Tier 1 tetap sama ⇒ tidak ada miss baru.
 - Late-connect MCP path tidak tersentuh.
 
-## 5. Open questions (perlu keputusan sebelum implementasi)
+## 5. Open questions
 
-1. **Apakah `skill_manage` tetap Tier 1?** Skill list adalah komponen system prompt terbesar (~2,5–3K token). Jika `skill_manage` lazy, user tidak bisa install skill dari sesi interaktif tanpa 1 langkah tambahan. Usul: tetap Tier 1.
+> Resolusi implementasi (commit `4f5e1f49a`): Q1 terjawab **ya, Tier 1**; Q2 codemode masuk Tier 2 (`lazy_tools` bisa override); Q3 default tetap `eager` (aman, opt-in `static`); Q4 tiering komposabel dengan profile (override `eager_tools`/`lazy_tools` menang).
+
+1. **Apakah `skill_manage` tetap Tier 1?** Skill list adalah komponen system prompt terbesar (~2,5–3K token). Jika `skill_manage` lazy, user tidak bisa install skill dari sesi interaktif tanpa 1 langkah tambahan. Usul: tetap Tier 1. **→ Terjawab: Tier 1.**
 2. **Apakah `codemode` masuk Tier 2?** Codemode bisa memanggil semua tool termasuk Tier 2 dari dalam sandbox — mungkin membuat Tier 2 tidak perlu di-load manual. Perlu uji: apakah model dengan codemode aktif masih butuh Tier 2 eager?
 3. **Threshold aktivasi**: default `eager` (aman) vs `static` sebagai default baru? Usul: `static` default hanya setelah 1 rilis dengan flag.
 4. **Interaksi dengan `[tools] profile = "acp"/"minimal"`**: tiering harus komposabel dengan profile yang ada, bukan menggantikannya.

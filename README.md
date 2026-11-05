@@ -122,7 +122,7 @@ Jcode is inventing a new form of customizability. One that doesn't limit you to 
 
 ## Token efficiency
 
-Two opt-in defaults keep the cached prefix small:
+Two optimizations keep the cached prefix small:
 
 - **Static tool tiering** (`[tools] builtin_tiering = "static"`): frequent Tier 1 tools stay eager, Tier 2 tools (browser, gmail, calendar, etc.) load on demand via the `tools` meta-tool. See [docs/LAZY_TOOL_DEFINITIONS_SPEC.md](docs/LAZY_TOOL_DEFINITIONS_SPEC.md).
 - **VCC compaction** (`[compaction] strategy = "vcc"`, default): view-oriented conversation compiler, fast and token-free. Set `strategy = "llm"` for the legacy summarizer.
