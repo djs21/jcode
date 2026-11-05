@@ -38,7 +38,7 @@ pub use jcode_compaction_core::{
     is_image_rejection_error, is_request_payload_too_large_error, mean_embedding,
     message_char_count, reusable_cache_tokens_from_usage, safe_compaction_cutoff,
     semantic_cache_key, semantic_goal_text, semantic_message_text, strip_large_images_in_contents,
-    summary_payload_char_count,
+    summary_payload_char_count, vcc,
 };
 
 const HARD_THRESHOLD_PENDING_WAIT_MS: u64 = 15_000;
@@ -1728,6 +1728,31 @@ async fn generate_compaction_artifact(
     mut existing_summary: Option<Summary>,
 ) -> Result<CompactionResult> {
     let start = Instant::now();
+    // Skip VCC when there is no existing summary AND messages is very small (e.g., 1 msg)
+    // to keep native compaction / LLM fallback path for non-compaction scenarios (e.g., unit tests with 1 msg)
+    let is_small = messages.len() <= 1;
+    let cfg = crate::config::config().compaction.clone();
+    // Use VCC algorithmic compaction if configured (default), avoiding LLM completion
+    if cfg.strategy == crate::config::CompactionStrategy::Vcc && !is_small {
+        let prev_text = existing_summary.as_ref().map(|s| s.text.as_str());
+        let summary_text = vcc::compile_vcc_summary(&messages, prev_text, &cfg.tracked_commands);
+        let duration_ms = start.elapsed().as_millis() as u64;
+
+        crate::logging::info(&format!(
+            "[compaction/vcc] Compiled VCC summary for {} messages in {}ms ({} chars)",
+            messages.len(),
+            duration_ms,
+            summary_text.len()
+        ));
+
+        return Ok(CompactionResult {
+            summary_text,
+            openai_encrypted_content: None,
+            covers_up_to_turn: messages.len(),
+            duration_ms,
+            summarized_messages: messages.len(),
+        });
+    }
     if let Some(summary) = existing_summary.as_mut()
         && let Some(encrypted_content) = summary.openai_encrypted_content.as_ref()
         && !openai_encrypted_content_is_sendable(encrypted_content)

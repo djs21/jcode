@@ -29,6 +29,33 @@ pub enum CompactionMode {
     Semantic,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum CompactionStrategy {
+    /// View-oriented Conversation Compiler: fast, deterministic, token-free algorithmic compaction (default)
+    #[default]
+    Vcc,
+    /// Legacy LLM-based summarization
+    Llm,
+}
+
+impl CompactionStrategy {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Vcc => "vcc",
+            Self::Llm => "llm",
+        }
+    }
+
+    pub fn parse(input: &str) -> Option<Self> {
+        match input.trim().to_ascii_lowercase().as_str() {
+            "vcc" => Some(Self::Vcc),
+            "llm" => Some(Self::Llm),
+            _ => None,
+        }
+    }
+}
+
 impl CompactionMode {
     pub fn as_str(&self) -> &'static str {
         match self {
@@ -290,6 +317,12 @@ pub struct CompactionConfig {
     /// Compaction mode: reactive (default), proactive, or semantic
     pub mode: CompactionMode,
 
+    /// Compaction strategy: vcc (default view-oriented compiler) or llm
+    pub strategy: CompactionStrategy,
+
+    /// Tracked command prefixes to record in VCC summary (e.g. ["cargo", "test", "docker"])
+    pub tracked_commands: Vec<String>,
+
     /// [reactive] Context fraction that starts background compaction.
     pub reactive_threshold: f32,
 
@@ -344,6 +377,8 @@ impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
             mode: CompactionMode::Reactive,
+            strategy: CompactionStrategy::Vcc,
+            tracked_commands: Vec::new(),
             reactive_threshold: 0.80,
             reactive_threshold_tokens: 400_000,
             lookahead_turns: 15,

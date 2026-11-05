@@ -2,6 +2,8 @@ use jcode_message_types::{ContentBlock, Message, Role};
 use std::collections::HashSet;
 use std::hash::{Hash, Hasher};
 
+pub mod vcc;
+
 /// Default token budget (200k tokens - matches Claude's actual context limit)
 pub const DEFAULT_TOKEN_BUDGET: usize = 200_000;
 
@@ -922,3 +924,7 @@ mod tests;
 #[cfg(test)]
 #[path = "image_rejection_tests.rs"]
 mod image_rejection_tests;
+
+#[cfg(test)]
+#[path = "vcc_tests.rs"]
+mod vcc_tests;
