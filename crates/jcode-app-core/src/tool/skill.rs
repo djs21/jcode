@@ -190,6 +190,9 @@ impl SkillTool {
                 if let Some(ref tools) = skill.allowed_tools {
                     output.push_str(&format!("  Tools: {}\n", tools.join(", ")));
                 }
+                if skill.is_lazy() {
+                    output.push_str(&format!("  Lazy: DOC.md at {}\n", skill.lazy_doc_path.as_ref().unwrap().display()));
+                }
                 output.push('\n');
             }
             output
@@ -296,7 +299,7 @@ impl SkillTool {
                 output.push_str(&format!("**Allowed tools:** {}\n", tools.join(", ")));
             }
             output.push_str("\n---\n\n");
-            output.push_str(&skill.content);
+            output.push_str(&skill.resolved_body());
 
             Ok(ToolOutput::new(output).with_title(format!("Skills: {}", name)))
         } else {

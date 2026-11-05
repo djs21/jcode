@@ -7,8 +7,40 @@ fn test_skill(name: &str, description: &str, content: &str) -> Skill {
         allowed_tools: None,
         content: content.to_string(),
         path: PathBuf::from(format!("/tmp/{name}/SKILL.md")),
+        lazy_doc_path: None,
         search_text: std::sync::OnceLock::from(build_skill_search_text(name, description, content)),
     }
+}
+
+#[test]
+fn lazy_skill_resolves_body_from_doc_md() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let dir = temp.path().join("lazy-skill");
+    std::fs::create_dir_all(&dir).expect("create skill dir");
+    let doc_path = dir.join("DOC.md");
+    std::fs::write(
+        &doc_path,
+        "# Full lazy doc body\n\nDetailed instructions live in DOC.md.\n",
+    )
+    .expect("write DOC.md");
+    std::fs::write(
+        dir.join("SKILL.md"),
+        "---\nname: lazy-skill\ndescription: Lazy test skill\n---\n\n# lazy-skill (Lazy-loaded)\n\nPointer stub.\n",
+    )
+    .expect("write SKILL.md");
+
+    let skill = SkillRegistry::parse_skill_inner(&dir.join("SKILL.md")).expect("parse lazy skill");
+    assert!(skill.is_lazy(), "skill with sibling DOC.md must be lazy");
+    assert_eq!(skill.lazy_doc_path.as_ref(), Some(&doc_path));
+    assert!(
+        skill.get_prompt().contains("Detailed instructions live in DOC.md."),
+        "get_prompt must resolve DOC.md body for lazy skills"
+    );
+
+    // Classic skill without DOC.md stays non-lazy and body comes from SKILL.md.
+    let classic = test_skill("classic", "d", "classic body");
+    assert!(!classic.is_lazy());
+    assert!(classic.get_prompt().contains("classic body"));
 }
 
 fn write_test_skill(root: &Path, scope: &str, name: &str) {

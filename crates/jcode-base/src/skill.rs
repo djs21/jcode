@@ -19,6 +19,10 @@ pub struct Skill {
     pub allowed_tools: Option<Vec<String>>,
     pub content: String,
     pub path: PathBuf,
+    /// Path to `DOC.md` in the same directory, when the skill uses the lazy
+    /// split layout (small `SKILL.md` stub + full body in `DOC.md`, picoclaw-style).
+    /// `None` for classic single-file skills whose body lives in `SKILL.md`.
+    pub lazy_doc_path: Option<PathBuf>,
     /// Normalized search text, built on first use. Normalizing every skill
     /// body eagerly dominated `load_global` (the TUI loads it before its first
     /// frame), yet only memory-entry conversion ever reads it.
@@ -526,12 +530,17 @@ impl SkillRegistry {
                 .collect(),
             AllowedTools::Sequence(tools) => tools,
         });
+        // Lazy split: sibling DOC.md holds the full technical doc. SKILL.md is
+        // only a pointer stub kept in memory, so registry load stays cheap and
+        // the full body is read on demand when the skill is activated.
+        let lazy_doc_path = path.parent().map(|dir| dir.join("DOC.md")).filter(|doc| doc.is_file());
         Ok(Skill {
             name,
             description,
             allowed_tools,
             content: body,
             path: path.to_path_buf(),
+            lazy_doc_path,
             search_text: std::sync::OnceLock::new(),
         })
     }
@@ -926,12 +935,26 @@ pub fn endorsed_skills() -> &'static [EndorsedSkill] {
 }
 
 impl Skill {
-    /// Get the full prompt content for this skill
+    /// Get the full prompt content for this skill. For lazy skills the body is
+    /// resolved from the sibling `DOC.md`; if that file is unreadable the stub
+    /// body is returned so activation never fails hard.
     pub fn get_prompt(&self) -> String {
-        format!(
-            "# Skill: {}\n\n{}\n\n{}",
-            self.name, self.description, self.content
-        )
+        let body = self.resolved_body();
+        format!("# Skill: {}\n\n{}\n\n{}", self.name, self.description, body)
+    }
+
+    /// Body actually shown on activation: `DOC.md` content for lazy skills,
+    /// otherwise the `SKILL.md` body parsed at load time.
+    pub fn resolved_body(&self) -> String {
+        match &self.lazy_doc_path {
+            Some(doc) => std::fs::read_to_string(doc).unwrap_or_else(|_| self.content.clone()),
+            None => self.content.clone(),
+        }
+    }
+
+    /// True for lazy skills where the full doc lives in sibling `DOC.md`.
+    pub fn is_lazy(&self) -> bool {
+        self.lazy_doc_path.is_some()
     }
 
     /// Load additional files from the skill directory
