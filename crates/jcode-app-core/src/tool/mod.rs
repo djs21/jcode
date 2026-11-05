@@ -50,6 +50,8 @@ pub(crate) mod session_search_index;
 mod side_panel;
 mod skill;
 mod todo;
+pub(crate) mod tier;
+mod tools_meta;
 mod user_response;
 mod webfetch;
 mod websearch;
@@ -583,6 +585,18 @@ impl Registry {
                 &mut tools_map,
                 "integration_tools",
                 discover::DiscoverToolsTool::new(),
+            );
+        }
+        // Static builtin tiering: the `tools` meta-tool is the only way to
+        // reach Tier 2 tools on non-native providers. Only registered in
+        // static mode so eager mode costs nothing.
+        if crate::config::config().tools.builtin_tiering
+            == crate::config::BuiltinTieringMode::Static
+        {
+            Self::insert_tool(
+                &mut tools_map,
+                "tools",
+                tools_meta::ToolsMetaTool::new(registry.downgrade()),
             );
         }
         let session_tools_ms = session_tools_start.elapsed().as_millis();

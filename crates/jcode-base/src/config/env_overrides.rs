@@ -163,6 +163,17 @@ impl Config {
         {
             self.tools.codemode = parsed;
         }
+        if let Ok(v) = std::env::var("JCODE_BUILTIN_TIERING")
+            && let Some(mode) = crate::config::BuiltinTieringMode::parse(&v)
+        {
+            self.tools.builtin_tiering = mode;
+        }
+        if let Ok(v) = std::env::var("JCODE_EAGER_TOOLS") {
+            self.tools.eager_tools = parse_env_list(&v);
+        }
+        if let Ok(v) = std::env::var("JCODE_LAZY_TOOLS") {
+            self.tools.lazy_tools = parse_env_list(&v);
+        }
 
         // ACP adapter
         if let Ok(v) = std::env::var("JCODE_ACP_PROFILE") {

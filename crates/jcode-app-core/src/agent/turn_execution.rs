@@ -684,8 +684,21 @@ impl Agent {
             self.session.is_canary,
             self.is_desktop_selfdev(),
         );
+        // Static builtin tiering: mark Tier 2 as deferred. On native
+        // providers they flow through the deferred path below; on
+        // non-native providers apply_builtin_tiering_exposure removes
+        // them from the top-level list (meta-tool `tools` reaches them).
+        let tiering_static = crate::config::config().tools.builtin_tiering
+            == crate::config::BuiltinTieringMode::Static;
+        if tiering_static {
+            let cfg = &crate::config::config().tools;
+            crate::tool::tier::apply_tiering(&mut tools, &cfg.eager_tools, &cfg.lazy_tools);
+        }
         if apply_mcp_exposure {
             self.apply_mcp_tool_exposure(&mut tools);
+            if tiering_static {
+                self.apply_builtin_tiering_exposure(&mut tools);
+            }
         }
         let mut tools = crate::tool::sdk::apply_definitions(&self.session.id, tools);
         if let Some(config) = sdk.as_ref() {
@@ -721,6 +734,20 @@ impl Agent {
         if deferred {
             tools.retain(|tool| !tool.name.starts_with("mcp__"));
         }
+    }
+
+    /// Static tiering exposure for builtin Tier 2 tools.
+    ///
+    /// On native-deferred providers Tier 2 stays as `defer_loading`
+    /// definitions (same path as MCP). On non-native providers Tier 2
+    /// must not reach the wire as eager (provider/mod.rs would re-eager
+    /// them), so they are removed from the top-level list; the `tools`
+    /// meta-tool is the discovery/call surface.
+    fn apply_builtin_tiering_exposure(&self, tools: &mut Vec<ToolDefinition>) {
+        if self.native_deferred_mcp() {
+            return;
+        }
+        tools.retain(|tool| !tool.defer_loading || tool.name.starts_with("mcp__"));
     }
 
     /// Expose the `selfdev` tool only while running in self-development mode.

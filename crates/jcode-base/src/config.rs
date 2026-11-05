@@ -286,6 +286,10 @@ const CONFIG_ENV_KEYS: &[&str] = &[
     "JCODE_MCP_TOOLS",
     "JCODE_MCP_TOOLS_TOKEN_THRESHOLD",
     "JCODE_CODEMODE",
+    "JCODE_BROWSER_HANDOFF",
+    "JCODE_BUILTIN_TIERING",
+    "JCODE_EAGER_TOOLS",
+    "JCODE_LAZY_TOOLS",
     "JCODE_RETRY_BACKOFF_CAP_SECS",
     "JCODE_SWARM_ENABLED",
     "JCODE_SWARM_EFFORT",
@@ -825,6 +829,34 @@ impl McpToolsMode {
     }
 }
 
+/// Controls how builtin (non-MCP) tools are exposed to the model.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BuiltinTieringMode {
+    /// All builtin tools are eager (default, legacy behavior).
+    #[default]
+    Eager,
+    /// Tier 1 tools stay eager; Tier 2 tools are lazy-loaded on demand.
+    Static,
+}
+
+impl BuiltinTieringMode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Eager => "eager",
+            Self::Static => "static",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        match value.trim().to_ascii_lowercase().as_str() {
+            "eager" => Some(Self::Eager),
+            "static" => Some(Self::Static),
+            _ => None,
+        }
+    }
+}
+
 /// Controls which tools are sent to the model.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -857,6 +889,13 @@ pub struct ToolConfig {
     /// JavaScript in an embedded QuickJS sandbox able to call every other
     /// tool (including MCP tools). Enabled by default.
     pub codemode: bool,
+    /// Builtin tool tiering: eager (default) keeps all builtin tools in the
+    /// cached prefix; static keeps Tier 1 eager and lazy-loads Tier 2.
+    pub builtin_tiering: BuiltinTieringMode,
+    /// Override: force these tools eager even in static tiering.
+    pub eager_tools: Vec<String>,
+    /// Override: force these tools lazy even in static tiering.
+    pub lazy_tools: Vec<String>,
 }
 
 impl Default for ToolConfig {
@@ -871,6 +910,9 @@ impl Default for ToolConfig {
             mcp_tools: McpToolsMode::Auto,
             mcp_tools_token_threshold: 8_000,
             codemode: true,
+            builtin_tiering: BuiltinTieringMode::Eager,
+            eager_tools: Vec::new(),
+            lazy_tools: Vec::new(),
         }
     }
 }

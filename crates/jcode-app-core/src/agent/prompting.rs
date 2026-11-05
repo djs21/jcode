@@ -156,7 +156,7 @@ impl Agent {
             .as_ref()
             .map(std::path::PathBuf::from);
 
-        let (split, _context_info) = crate::prompt::build_system_prompt_split_with_agents_md(
+        let (mut split, _context_info) = crate::prompt::build_system_prompt_split_with_agents_md(
             skill_prompt.as_deref(),
             available_skills,
             self.session.is_canary,
@@ -164,6 +164,18 @@ impl Agent {
             working_dir.as_deref(),
             self.agents_md_snapshot.clone(),
         );
+
+        // Static tiering: announce lazy Tier 2 tools in one line. The full
+        // definitions stay out of the cached prefix and load via `tools`.
+        if crate::config::config().tools.builtin_tiering
+            == crate::config::BuiltinTieringMode::Static
+        {
+            let lazy = crate::tool::tier::lazy_tool_names();
+            split.static_part.push_str(&format!(
+                "\n\nLazy tools available (load with tools action=search/call): {}\n",
+                lazy.join(", ")
+            ));
+        }
 
         split
     }
