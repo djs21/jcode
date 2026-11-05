@@ -128,6 +128,18 @@ without treating the model's full window as the active compaction budget.
 
 See the [agentgrep implementation](../crates/jcode-app-core/src/tool/agentgrep.rs).
 
+### Static tool tiering
+
+Set `[tools] builtin_tiering = "static"` to keep frequent Tier 1 tools eager and lazy-load Tier 2 tools (browser, gmail, calendar, etc.) on demand via the `tools` meta-tool, saving ~9K tokens per request. Default is `"eager"`. See [LAZY_TOOL_DEFINITIONS_SPEC.md](LAZY_TOOL_DEFINITIONS_SPEC.md).
+
+### Compaction strategy (VCC)
+
+`[compaction] strategy = "vcc"` (default) uses a fast, deterministic view-oriented compiler with no LLM call. Set `"llm"` for legacy summarization.
+
+### Lazy skills
+
+Heavy skill bodies are split into `DOC.md` and loaded on demand, so the full skill index does not inflate every system prompt.
+
 ## KV cache
 
 Provider-side prompt caching lets repeated prompt prefixes reuse work from earlier requests. Jcode monitors provider-reported cache usage and compares request signatures to detect meaningful cache misses. The monitor runs inside the agent, so clients receive the same classified cache-miss events.

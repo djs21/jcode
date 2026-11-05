@@ -458,10 +458,22 @@ mcp_tools_token_threshold = 8000
 # parallelize calls, and keep intermediate results out of the conversation.
 # Env override: JCODE_CODEMODE=0 to disable.
 codemode = true
+# Builtin tool tiering. "eager" (default) sends all builtin tool definitions
+# in the cached prefix. "static" keeps frequent Tier 1 tools eager and
+# lazy-loads Tier 2 (browser, gmail, calendar, etc.) on demand via the
+# `tools` meta-tool, saving ~9K tokens per request. See
+# docs/LAZY_TOOL_DEFINITIONS_SPEC.md. Env override: JCODE_BUILTIN_TIERING.
+builtin_tiering = "eager"
+# Overrides for static tiering. Force extra tools eager or lazy.
+# eager_tools = ["browser"]
+# lazy_tools = ["calendar"]
 
 [compaction]
 # Reactive uses fixed thresholds. Proactive predicts future growth.
 mode = "reactive"
+# Strategy: "vcc" (default) is a fast, deterministic view-oriented compiler
+# with no LLM call. "llm" is the legacy summarization strategy.
+strategy = "vcc"
 # Reactive starts at either threshold, whichever is reached first.
 # Zero disables the absolute token threshold.
 reactive_threshold = 0.80
