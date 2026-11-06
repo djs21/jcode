@@ -72,7 +72,7 @@ echo "Building portable Linux release in Docker image: $image"
 echo "Output dir: $out_dir"
 echo "Embedding git metadata: hash=${git_hash:-<none>} tag=${git_tag:-<none>} dirty=$git_dirty changelog_lines=$(printf '%s' "$changelog_raw" | grep -c '' || true)"
 
-docker run --rm \
+docker run --rm --network host \
   -e CARGO_TERM_COLOR=always \
   -e CARGO_PROFILE_RELEASE_OPT_LEVEL \
   -e CARGO_BUILD_JOBS \
@@ -110,6 +110,13 @@ docker run --rm \
         perl \
         pkg-config
     elif command -v yum >/dev/null 2>&1; then
+      # CentOS 7 is EOL since 2024; mirrors moved to vault.centos.org.
+      # Rewrite repo files so yum install works on manylinux2014 images.
+      if ls /etc/yum.repos.d/CentOS-*.repo >/dev/null 2>&1; then
+        sed -i "s|^mirrorlist=|#mirrorlist=|" /etc/yum.repos.d/CentOS-*.repo
+        sed -i "s|^# *baseurl=http\?://mirror.centos.org|baseurl=http://vault.centos.org|" /etc/yum.repos.d/CentOS-*.repo
+        sed -i "s|^baseurl=http\?://mirror.centos.org|baseurl=http://vault.centos.org|" /etc/yum.repos.d/CentOS-*.repo
+      fi
       yum install -y \
         ca-certificates \
         curl \
